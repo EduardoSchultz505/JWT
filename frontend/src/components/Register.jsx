@@ -1,50 +1,105 @@
 import { useState } from 'react';
-import api from '../api/api'; // Sua instância configurada do Axios
-import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 
 function Register() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigate = useNavigate();
+    const [message, setMessage] = useState('');
+    const [error, setError] = useState('');
+    const [loading, setLoading] = useState(false);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        setMessage('');
+        setError('');
+
+        if (!email || !password) {
+            setError('E-mail e senha são obrigatórios.');
+            return;
+        }
+
+        if (password.length < 6) {
+            setError('A senha deve ter no mínimo 6 caracteres.');
+            return;
+        }
+
+        setLoading(true);
+
         try {
-            // 1. Envia os dados para a rota de registro do backend
-            await api.post('/auth/register', { email, password });
-            
-            // 2. Notifica o usuário e redireciona para o login
-            alert('Usuário registrado com sucesso! Faça o login.');
-            navigate('/login');
-            
+            const response = await axios.post(
+                'http://localhost:5000/api/auth/register',
+                {
+                    email: email.trim(),
+                    password
+                }
+            );
+
+            setMessage(
+                response.data.message || 'Usuário registrado com sucesso.'
+            );
+
+            setEmail('');
+            setPassword('');
+
         } catch (error) {
-            // 3. Trata erros, como 'Email já cadastrado'
-            const message = error.response?.data?.message || 'Erro ao registrar. Tente novamente.';
-            alert(message);
+            const data = error.response?.data;
+
+            if (data?.erros?.length) {
+                setError(data.erros[0].msg);
+            } else {
+                setError(
+                    data?.message || 'Erro ao realizar cadastro.'
+                );
+            }
+
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div style={{ padding: '20px' }}>
-            <h2>Registro de Usuário</h2>
+        <div>
+            <h2>Criar conta</h2>
+
             <form onSubmit={handleSubmit}>
-                <input 
-                    type="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="Email" 
-                    required 
-                />
-                <br /><br />
-                <input 
-                    type="password" 
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)} 
-                    placeholder="Senha" 
-                    required 
-                />
-                <br /><br />
-                <button type="submit">Registrar</button>
+                <div>
+                    <input
+                        id="email"
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled={loading}
+                    />
+                </div>
+
+                <div>
+                    <input
+                        id="password"
+                        type="password"
+                        placeholder="Senha"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        disabled={loading}
+                    />
+                </div>
+
+                {error && (
+                    <p style={{ color: 'red' }}>
+                        {error}
+                    </p>
+                )}
+
+                {message && (
+                    <p style={{ color: 'green' }}>
+                        {message}
+                    </p>
+                )}
+
+                <button type="submit" disabled={loading}>
+                    {loading ? 'Cadastrando...' : 'Cadastrar'}
+                </button>
             </form>
         </div>
     );

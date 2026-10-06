@@ -2,57 +2,60 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../utils/db');
+const { body, validationResult } = require('express-validator')
 
-// ======================================================
-// REGISTRO
-// POST /api/auth/register
-// ======================================================
+router.post(
+    '/register',
+    [
+        body('email')
+            .trim()
+            .isEmail()
+            .withMessage('O e-mail fornecido não é válido'),
 
-router.post('/register', async (req, res) => {
-    const { email, password } = req.body;
+        body('password')
+            .isLength({ min: 6 })
+            .withMessage('A senha deve ter no mínimo 6 caracteres')
+    ],
+    async (req, res) => {
+        const errors = validationResult(req);
 
-    if (!email || !password) {
-        return res.status(400).json({
-            message: 'Email e senha são obrigatórios.'
-        });
-    }
-
-    try {
-        // Criptografa a senha
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Insere no PostgreSQL
-        await db.query(
-            'INSERT INTO users (email, password) VALUES ($1, $2)',
-            [email, hashedPassword]
-        );
-
-        res.status(201).json({
-            message: 'Usuário registrado com sucesso.'
-        });
-
-    } catch (error) {
-        console.error('Erro no registro:', error);
-
-        // PostgreSQL: violação de UNIQUE
-        if (error.code === '23505') {
+        if (!errors.isEmpty()) {
             return res.status(400).json({
-                message: 'Email já cadastrado.'
+                erros: errors.array(),
+                message: 'Erro de validação'
             });
         }
 
-        res.status(500).json({
-            message: 'Erro no servidor.'
-        });
+        const { email, password } = req.body;
+
+        try {
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(password, salt);
+
+            await db.query(
+                'INSERT INTO users (email, password) VALUES ($1, $2)',
+                [email, hashedPassword]
+            );
+
+            return res.status(201).json({
+                message: 'Usuário registrado com sucesso.'
+            });
+
+        } catch (error) {
+            console.error('Erro no registro:', error);
+
+            if (error.code === '23505') {
+                return res.status(400).json({
+                    message: 'Email já cadastrado.'
+                });
+            }
+
+            return res.status(500).json({
+                message: 'Erro no servidor.'
+            });
+        }
     }
-});
-
-
-// ======================================================
-// LOGIN
-// POST /api/auth/login
-// ======================================================
+);
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -64,7 +67,6 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        // Busca o usuário no PostgreSQL
         const result = await db.query(
             'SELECT * FROM users WHERE email = $1',
             [email]
@@ -78,7 +80,6 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Compara senha digitada com a senha criptografada
         const isMatch = await bcrypt.compare(
             password,
             user.password
@@ -90,29 +91,23 @@ router.post('/login', async (req, res) => {
             });
         }
 
-        // Gera o JWT
         const token = jwt.sign(
             { id: user.id },
             process.env.JWT_SECRET,
             { expiresIn: '1h' }
         );
 
-        // Salva o JWT em cookie HTTP-Only
         res.cookie('jwt', token, {
             httpOnly: true,
-            secure: false,
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
-            maxAge: 60 * 60 * 1000
+            maxAge: 3600000
         });
 
-        res.json({
-            message: 'Login realizado com sucesso.'
-        });
+        res.status(200).json({ message: 'Login bem-sucedido. Token enviado via cookie. ' })
 
 
     } catch (error) {
-        console.error('Erro no login:', error);
-
         res.status(500).json({
             message: 'Erro no servidor.'
         });
