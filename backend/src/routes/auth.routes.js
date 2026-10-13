@@ -5,6 +5,49 @@ const db = require('../utils/db');
 const { body, validationResult } = require('express-validator')
 
 router.post(
+    // ----------------------------------------------------------------------
+// ROTA DE REGISTRO (POST /register)
+// ----------------------------------------------------------------------
+/**
+ * @swagger
+ * tags:
+ *  - name: Autenticação
+ *    description: Rotas de registro, login e logout
+ */
+
+// ----------------------------------------------------------------------
+// ROTA DE REGISTRO (POST /register)
+// ----------------------------------------------------------------------
+/**
+ * @swagger
+ * /auth/register:
+ *  post:
+ *      summary: Registra um novo usuário no sistema.
+ *      tags: [Autenticação]
+ *      requestBody:
+ *          required: true
+ *          content:
+ *              application/json:
+ *                  schema:
+ *                      type: object
+ *                      required:
+ *                          - email
+ *                          - password
+ *                      properties:
+ *                          email:
+ *                              type: string
+ *                              format: email
+ *                              example: novo@usuario.com
+ *                          password:
+ *                              type: string
+ *                              example: senha123456
+ *      responses:
+ *          201:
+ *              description: Usuário registrado com sucesso.
+ *          400:
+ *              description: Erro de validação ou e-mail já cadastrado.
+ */
+
     '/register',
     [
         body('email')
@@ -56,6 +99,43 @@ router.post(
         }
     }
 );
+
+// ----------------------------------------------------------------------
+// ROTA DE LOGIN (POST /login) - COM SWAGGER
+// ----------------------------------------------------------------------
+/**
+ * @swagger
+ * /auth/login:
+ *  post:
+ *      summary: Autentica um usuário e envia o token JWT via cookie HTTP-Only.
+ *      tags: [Autenticação]
+ *      requestBody:
+ *          required: true
+ *          content:
+ *              application/json:
+ *                  schema:
+ *                      type: object
+ *                      required:
+ *                        - email
+ *                        - password
+ *                      properties:
+ *                          email:
+ *                              type: string
+ *                              example: usuario@teste.com
+ *                          password:
+ *                              type: string
+ *                              example: senha123
+ *      responses:
+ *          200:
+ *              description: Login bem-sucedido. O token JWT é definido no cookie 'jwt'.
+ *              headers:
+ *                  Set-Cookie:
+ *                      schema:
+ *                          type: string
+ *                          example: jwt=token_jwt_aqui; HttpOnly; Max-Age=3600
+ *          401:
+ *              description: Credenciais inválidas.
+ */
 
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
@@ -113,6 +193,20 @@ router.post('/login', async (req, res) => {
         });
     }
 });
+
+// ----------------------------------------------------------------------
+// ROTA DE LOGOUT (POST /logout) - NOVIDADE CRÍTICA E COM SWAGGER
+// ----------------------------------------------------------------------
+/**
+ * @swagger
+ * /auth/logout:
+ *  post:
+ *      summary: Limpa o cookie JWT no navegador para efetuar o logout.
+ *      tags: [Autenticação]
+ *      responses:
+ *          200:
+ *              description: Logout bem-sucedido. Cookie JWT limpo.
+ */
 
 router.post('/logout', (req, res) => {
     res.clearCookie('jwt', {
