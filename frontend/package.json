@@ -16,6 +16,8 @@
     "react-dom": "^19.2.8",
     "react-router-dom": "^7.18.2",
     "styled-components": "^6.5.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1",
     "tailwind": "^2.3.1"
   },
   "devDependencies": {
